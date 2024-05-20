@@ -1,0 +1,49 @@
+name: server_run
+
+on:
+  push:
+    branches: [ "main" ]
+
+  workflow_dispatch:
+
+jobs:
+  run_pull:
+    name: run pull
+    runs-on: ubuntu-latest
+    steps:
+    - name: ssh, git pull
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script_stop: true
+        script: |
+            cd ${{ secrets.WORK_DIR }} && \
+            git checkout ${{ secrets.MAIN_BRANCH }} && \
+            git pull && exit
+        use_insecure_cipher: true
+
+    - name: stop server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script_stop: false
+        script: |
+          cd ${{ secrets.WORK_DIR }} && \
+          docker compose stop
+        use_insecure_cipher: true
+
+    - name: restart server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script_stop: true
+        script: |
+          cd ${{ secrets.WORK_DIR }} && \
+          docker compose up -d --build
+        use_insecure_cipher: true

@@ -1,0 +1,97 @@
+version: '3.8'
+
+
+### BUILDS
+x-build-nginx:
+  &build-nginx
+  context: .
+  dockerfile: provision/docker/dockerfile.nginx
+
+x-build-backend:
+  &build-backend
+  context: .
+  dockerfile: provision/docker/dockerfile.backend
+
+### SERVICES
+services:
+
+  # Build Images
+  nginx-build:
+    build:
+      << : *build-nginx
+    image: aleksandrivanov35/adv-grabber-nginx:0.0.1
+
+  backend-build:
+    build:
+      << : *build-backend
+    image: aleksandrivanov35/adv-grabber-backend:0.0.1
+
+  # Start Services
+  nginx:
+    image: aleksandrivanov35/adv-grabber-nginx:0.0.1
+    container_name: advgrabbernginx
+    hostname: advgrabbernginx
+    restart: always
+    depends_on:
+      - backend
+    networks:
+      - advgrabbergnetwork
+    ports:
+      - 443:443
+      - 80:80
+
+  backend:
+    image: aleksandrivanov35/adv-grabber-backend:0.0.1
+    container_name: advgrabberbackend
+    hostname: advgrabberbackend
+    volumes:
+      - ./filestorage:/adv_grabber_docker/filestorage/
+    networks:
+      - advgrabbergnetwork
+    depends_on:
+      - migration
+
+  migration:
+    image: aleksandrivanov35/adv-grabber-backend:0.0.1
+    container_name: advgrabbermigration
+    hostname: advgrabbermigration
+    env_file:
+      - ./conf/.env
+    networks:
+      - advgrabbergnetwork
+    depends_on:
+      - postgres
+    command: [
+      "/tmp/database.sh"
+    ]
+
+  postgres:
+    image: postgres:13
+    container_name: advgrabberpostgres
+    hostname: advgrabberpostgres
+    volumes:
+      - pgdata:/var/lib/postgresql/advgrabberdata
+    networks:
+      - advgrabbergnetwork
+    env_file:
+      - ./conf/.env
+#    environment:
+#      - POSTGRES_PASSWORD=HQmtbr9Y7R8JTTTTABC8t
+#TODO: the port is only used in local machine
+    ports:
+      - 5432:5432
+####################
+
+
+### NETWORKING
+networks:
+  advgrabbergnetwork:
+    name: advgrabbergnetwork
+#####################
+
+
+### VOLUMES
+volumes:
+  pgdata:
+    name: adv-grabber-postgres
+#####################

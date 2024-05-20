@@ -1,0 +1,29 @@
+#
+FROM python:3.9.6-buster
+
+#
+WORKDIR /adv_grabber_docker
+
+RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ buster-pgdg main" | tee /etc/apt/sources.list.d/pgdg.list
+RUN apt update \
+    && apt install -y --no-install-recommends \
+    libreadline7 libssl1.1 \
+    postgresql-client-13
+
+#
+COPY ./requirements.txt /adv_grabber_docker/requirements.txt
+COPY ./conf/.env /adv_grabber_docker/.env
+
+COPY provision/database.sh /tmp/
+RUN chmod +x /tmp/database.sh
+
+#
+RUN pip install --no-cache-dir --upgrade -r /adv_grabber_docker/requirements.txt
+
+#
+COPY ./adv_grabber /adv_grabber_docker
+RUN mkdir /adv_grabber_docker/filestorage
+RUN chmod 777 /adv_grabber_docker/filestorage
+#
+CMD ["uvicorn", "main:server_api", "--proxy-headers", "--host", "0.0.0.0", "--port", "3000"]

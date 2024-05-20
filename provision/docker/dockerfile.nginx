@@ -1,0 +1,7 @@
+FROM nginx:1.25
+
+COPY conf/nginx.conf /etc/nginx/templates/default.conf.template
+# COPY conf/ea-dev.key /etc/nginx/ea-dev.key
+# COPY conf/ea-dev-cert.pem /etc/nginx/ea-dev-cert.pem
+
+WORKDIR /usr/share/nginx/html/
