@@ -82,8 +82,8 @@ services:
     env_file:
       - ./conf/.env
 #TODO: the port is only used in local machine
-    ports:
-      - 5432:5432
+#    ports:
+#      - 5432:5432
     labels:
       advgrabbergnetwork: "advgrabbergnetwork"
 ####################
