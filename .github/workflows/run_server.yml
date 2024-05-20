@@ -47,5 +47,5 @@ jobs:
         script_stop: true
         script: |
           cd ${{ secrets.WORK_DIR }} && \
-          docker-qqcompose up -d --build
+          docker-compose up -d --build
         use_insecure_cipher: true
