@@ -35,8 +35,7 @@ jobs:
           cd ${{ secrets.WORK_DIR }} && \
           docker ps --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.ID}}" | xargs docker stop && \
           docker ps -a --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.ID}}" | xargs docker rm && \
-          docker ps -a --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.Image}}" | xargs -I {} docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep {} | awk '{print $2}' && \
-          docker images --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.ID}}" | xargs docker rmi
+          docker ps -a --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.Image}}" | xargs -I {} docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep {} | awk '{print $2}'
         use_insecure_cipher: true
 
     - name: restart server
