@@ -38,7 +38,7 @@ services:
       - advgrabbergnetwork
     ports:
       - 443:443
-      - 80:80
+      - 8080:80
 
   backend:
     image: aleksandrivanov35/adv-grabber-backend:0.0.1
