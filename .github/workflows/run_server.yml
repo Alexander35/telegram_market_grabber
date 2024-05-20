@@ -33,7 +33,10 @@ jobs:
         script_stop: false
         script: |
           cd ${{ secrets.WORK_DIR }} && \
-          docker compose stop
+          docker ps --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.ID}}" | xargs docker stop && \
+          docker ps -a --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.ID}}" | xargs docker rm && \
+          docker ps -a --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.Image}}" | xargs -I {} docker images --format "{{.Repository}}:{{.Tag}} {{.ID}}" | grep {} | awk '{print $2}' && \
+          docker images --filter "label=advgrabbergnetwork=advgrabbergnetwork" --format "{{.ID}}" | xargs docker rmi
         use_insecure_cipher: true
 
     - name: restart server
@@ -45,5 +48,5 @@ jobs:
         script_stop: true
         script: |
           cd ${{ secrets.WORK_DIR }} && \
-          docker compose up -d --build
+          docker-qqcompose up -d --build
         use_insecure_cipher: true

@@ -39,6 +39,8 @@ services:
     ports:
       - 443:443
       - 8080:80
+    labels:
+      advgrabbergnetwork: "advgrabbergnetwork"
 
   backend:
     image: aleksandrivanov35/adv-grabber-backend:0.0.1
@@ -50,6 +52,8 @@ services:
       - advgrabbergnetwork
     depends_on:
       - migration
+    labels:
+      advgrabbergnetwork: "advgrabbergnetwork"
 
   migration:
     image: aleksandrivanov35/adv-grabber-backend:0.0.1
@@ -64,6 +68,8 @@ services:
     command: [
       "/tmp/database.sh"
     ]
+    labels:
+      advgrabbergnetwork: "advgrabbergnetwork"
 
   postgres:
     image: postgres:13
@@ -75,11 +81,11 @@ services:
       - advgrabbergnetwork
     env_file:
       - ./conf/.env
-#    environment:
-#      - POSTGRES_PASSWORD=HQmtbr9Y7R8JTTTTABC8t
 #TODO: the port is only used in local machine
     ports:
       - 5432:5432
+    labels:
+      advgrabbergnetwork: "advgrabbergnetwork"
 ####################
 
 
