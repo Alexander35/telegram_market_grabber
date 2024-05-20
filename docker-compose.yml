@@ -37,7 +37,7 @@ services:
     networks:
       - advgrabbergnetwork
     ports:
-      - 443:443
+#      - 443:443
       - 8080:80
     labels:
       advgrabbergnetwork: "advgrabbergnetwork"
