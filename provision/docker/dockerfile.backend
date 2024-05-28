@@ -24,6 +24,8 @@ RUN pip install --no-cache-dir --upgrade -r /adv_grabber_docker/requirements.txt
 #
 COPY ./adv_grabber /adv_grabber_docker
 RUN mkdir /adv_grabber_docker/filestorage
+RUN mkdir /adv_grabber_docker/filestorage/csv_reports
 RUN chmod 777 /adv_grabber_docker/filestorage
+RUN chmod 777 /adv_grabber_docker/filestorage/csv_reports
 #
 CMD ["uvicorn", "main:server_api", "--proxy-headers", "--host", "0.0.0.0", "--port", "3000"]

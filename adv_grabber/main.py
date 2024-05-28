@@ -1,20 +1,25 @@
 import logging
+import os
+import uuid
 import uvicorn
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Body, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import FileResponse
 from fastapi import APIRouter
 from fastapi_users import BaseUserManager, models, exceptions
 from fastapi_users.router import ErrorCode
+from fastapi_utilities import repeat_at, repeat_every
+from starlette.requests import Request
+from starlette.responses import HTMLResponse
 from starlette.staticfiles import StaticFiles
 from config import settings
 from telegram_client.tool import TelegramChatGrabber
-from models.schemas import UserRead, UserUpdate, UserCreate
+from models.schemas import UserRead, UserUpdate, UserCreate, TelegramConfScheme
 from helpers.itsdangerous import get_from_token
-from helpers.db import get_async_session
+from helpers.db import get_async_session, get_user_db
 from helpers.users import fastapi_users, auth_backend, current_active_user, get_jwt_strategy, get_user_manager
-from models.models import User
+from models.models import User, Configuration
 import aioconsole
 from qrcode import QRCode
 import qrcode
@@ -23,12 +28,10 @@ server_api = FastAPI()
 users_router = APIRouter()
 login_router = APIRouter()
 companies_router = APIRouter()
-telegram_grabber_tool = TelegramChatGrabber()
-
+telegram_grabber_tools = dict()
 
 logger = logging.getLogger("server")
 templates = Jinja2Templates(directory="templates")
-
 
 
 origins = [
@@ -50,96 +53,56 @@ server_api.mount("/filestorage", StaticFiles(directory="filestorage"), name="fil
 async def favicon():
     return FileResponse('favicon.ico')
 
-
-@server_api.get("/")
-async def root():
-    return {"ok": "Hello!"}
-
-
-@login_router.get("/refresh_token")
-async def refresh_token(
-        strategy=Depends(get_jwt_strategy),
-        user: User = Depends(current_active_user)
-):
-    # TODO: update the local db
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
-        )
-
-    response = await auth_backend.login(strategy, user)
-
-    return response
-
-
-@login_router.get("/verify/{token}")
-async def verify_user_email(
-        token: str,
-        db=Depends(get_async_session),
-        user_manager: BaseUserManager[models.UP, models.ID] = Depends(get_user_manager),
-):
-
-    email_verify_token = get_from_token(token=token)
-    vt, user_id = email_verify_token.split(' ')
-
-    db_user = await db.get(User, user_id)
-
-    if db_user is None or not db_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorCode.LOGIN_BAD_CREDENTIALS,
-        )
-
-    try:
-        user = await user_manager.verify(token=vt)
-    except (exceptions.InvalidVerifyToken, exceptions.UserNotExists):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorCode.VERIFY_USER_BAD_TOKEN,
-        )
-    except exceptions.UserAlreadyVerified:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=ErrorCode.VERIFY_USER_ALREADY_VERIFIED,
-        )
-
-    return {"ok": "verified"}
-
 server_api.include_router(
     fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"]
 )
+# Do not announce the register router
 server_api.include_router(
     fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
     tags=["auth"],
 )
-server_api.include_router(
-    fastapi_users.get_reset_password_router(),
-    prefix="/auth",
-    tags=["auth"],
-)
-server_api.include_router(
-    fastapi_users.get_verify_router(UserRead),
-    prefix="/auth",
-    tags=["auth"],
-)
-server_api.include_router(
-    fastapi_users.get_users_router(UserRead, UserUpdate),
-    prefix="/users",
-    tags=["users"],
-)
+
+
+async def get_telegram_grabber_tool(db, user_id: uuid.UUID):
+    if telegram_grabber_tools.get(user_id):
+        telegram_grabber_tool = telegram_grabber_tools[user_id]
+        return telegram_grabber_tool
+
+    telegram_grabber_tools[user_id] = TelegramChatGrabber()
+    await telegram_grabber_tools[user_id].user_instance(db=db, user_id=user_id)
+    telegram_grabber_tool = telegram_grabber_tools[user_id]
+
+    return telegram_grabber_tool
+
+
+async def get_tel_messages(db, user_id: uuid.UUID):
+    telegram_grabber_tool = await get_telegram_grabber_tool(db=db, user_id=user_id)
+    report_file = await telegram_grabber_tool.get_messages()
 
 
 @server_api.get('/start_telegram_grabber')
-async def authenticated_route(user: User = Depends(current_active_user)):
-    report_file = await telegram_grabber_tool.get_messages()
-    return {"report_file": f"{settings.app_url}/{report_file}.csv"}
+async def start_telegram_grabber(
+        background_tasks: BackgroundTasks,
+        db=Depends(get_async_session),
+        user: User = Depends(current_active_user)
+):
+    background_tasks.add_task(get_tel_messages, db=db, user_id=user.id)
+    return HTMLResponse(status_code=202)
 
 
 @server_api.get('/telegram_grabber_create_session')
-async def telegram_create_session(user: User = Depends(current_active_user)):
+async def telegram_create_session(
+        db=Depends(get_async_session),
+        user: User = Depends(current_active_user)
+):
+    telegram_grabber_tool = await get_telegram_grabber_tool(db=db, user_id=user.id)
+
     await telegram_grabber_tool.client.connect()
+    is_authorized = await telegram_grabber_tool.client.is_user_authorized()
+    if is_authorized:
+        return {}
+
     qr_login = await telegram_grabber_tool.client.qr_login()
     try:
         generate_qr_code(qr_login.url)
@@ -149,18 +112,32 @@ async def telegram_create_session(user: User = Depends(current_active_user)):
 
     return FileResponse('filestorage/telegram_grabber_tool_qrcode.png')
 
-server_api.include_router(login_router, prefix="/auth/jwt", tags=["auth"])
-server_api.include_router(users_router, prefix="/users", tags=["users"])
+
+@server_api.patch('/telegram_user_configuration', response_model=dict)
+async def telegram_update_config(
+        telegram_config: TelegramConfScheme,
+        db=Depends(get_async_session),
+        user: User = Depends(current_active_user),
+):
+    orm_config = await Configuration.update(db=db, user_id=user.id, config=telegram_config)
+
+    return {}
+
+
+@server_api.get("/csv_reports")
+def get_csv_reports(
+        user: User = Depends(current_active_user)
+):
+
+    files = os.listdir("./filestorage/csv_reports")
+    files_paths = sorted([f"{settings.app_url}/filestorage/csv_reports/{f}" for f in files])
+
+    return {"csv_reports": files_paths}
 
 
 def generate_qr_code(token: str):
     img = qrcode.make(token)
     img.save('filestorage/telegram_grabber_tool_qrcode.png')
-
-
-@server_api.on_event("startup")
-async def init_client() -> None:
-    pass
 
 
 if __name__ == "__main__":

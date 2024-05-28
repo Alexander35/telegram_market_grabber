@@ -48,6 +48,7 @@ services:
     hostname: advgrabberbackend
     volumes:
       - ./filestorage:/adv_grabber_docker/filestorage/
+      - ./telegram_client_session:/adv_grabber_docker/telegram_client_session
     networks:
       - advgrabbergnetwork
     depends_on:
@@ -76,7 +77,8 @@ services:
     container_name: advgrabberpostgres
     hostname: advgrabberpostgres
     volumes:
-      - pgdata:/var/lib/postgresql/advgrabberdata
+      - ./pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
     networks:
       - advgrabbergnetwork
     env_file:
@@ -100,4 +102,10 @@ networks:
 volumes:
   pgdata:
     name: adv-grabber-postgres
+#    external: true
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/aleksandr/pgdata
 #####################

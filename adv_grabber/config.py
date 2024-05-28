@@ -13,44 +13,34 @@ class Settings(BaseSettings):
     itsdangerous_token_time: int
 
     user_auth_secret: str
-    otp_time: int
+    # otp_time: int
 
     app_url: str
 
-    telegram_grabber_api_id: int
-    telegram_grabber_api_hash: str
+    telegram_grabber_files_folder: str
 
-    telegram_grabber_conf: dict = {
-        "app_name": "telegram_chat_grabber",
-        "chats":
-            [
-                {
-                    "name": "https://t.me/montenegro_market",
-                    # "time_shift": "1 day",
-                    "time_shift": "1 hour"
-                }
-            ],
-        "csv_headers": [
-            "active_boolean",
-            "address_geographic_address",
-            "auto_boolean",
-            "condition_option_condition",
-            "contact_text",
-            "description_text",
-            "lang_text",
-            "link_text",
-            "name_text",
-            "picture_list_image",
-            "price_number",
-            "tg_text"],
-        "files_folder": "filestorage"
-    }
-
-    old_otp_code_msg: str = "OTP Code Is Too Old. New One Is Created. Check Your Email"
-    invalid_otp_code_msg: str = "INVALID_OTP_CODE"
-    account_not_verified_msg: str = "ACCOUNT_NOT_VERIFIED"
-
-    no_company_name_msg: str = "No Company Name Is Provided"
+    # telegram_grabber_conf: dict = {
+    #     "chats":
+    #         [
+    #             {
+    #                 "name": "https://t.me/montenegro_market",
+    #                 "time_shift": "1 hour"
+    #             }
+    #         ],
+    #     "csv_headers": [
+    #         "active_boolean",
+    #         "address_geographic_address",
+    #         "auto_boolean",
+    #         "condition_option_condition",
+    #         "contact_text",
+    #         "description_text",
+    #         "lang_text",
+    #         "link_text",
+    #         "name_text",
+    #         "picture_list_image",
+    #         "price_number",
+    #         "tg_text"]
+    # }
 
     @property
     def postgres_url(self):
