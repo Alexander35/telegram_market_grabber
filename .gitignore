@@ -3,3 +3,7 @@
 __pycache__/
 *.pyc
 filestorage
+init-db
+conf
+pgdata
+telegram_client_session
